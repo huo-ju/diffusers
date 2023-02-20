@@ -125,6 +125,7 @@ else:
         StableDiffusionPipelineSafe,
         StableDiffusionPix2PixZeroPipeline,
         StableDiffusionSAGPipeline,
+        StableDiffusionT2IAdapterPipeline,
         StableDiffusionUpscalePipeline,
         StableUnCLIPImg2ImgPipeline,
         StableUnCLIPPipeline,

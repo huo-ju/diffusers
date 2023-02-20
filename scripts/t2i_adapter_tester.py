@@ -1,38 +1,35 @@
 import cv2
 import argparse
-#import importlib
-import random
-import copy
 import torch
 import sys
 import os
 root_path = os.getcwd()
-print(root_path )
 sys.path.append(f"{root_path}/src")
 import diffusers
 from PIL import Image
-from diffusers import StableDiffusionPipeline, DPMSolverMultistepScheduler
+from diffusers import StableDiffusionT2IAdapterPipeline, DPMSolverMultistepScheduler
 from extra.t2iadapter.adapter import Adapter
 from basicsr.utils import img2tensor, tensor2img, scandir, get_time_str, get_root_logger, get_env_info
 
 diffusers.utils.logging.disable_progress_bar()
 
+
 class DummySafetyChecker():
     def safety_checker(self, images, *args, **kwargs):
         return images, [False] * len(images)
+
 
 def loadmodel(pipeline_name, model_path, **kwargs):
     print("load pipeline")
     print("load model from:", pipeline_name, model_path)
 
     kwargs["torch_dtype"] = torch.float16
-    if pipeline_name == "StableDiffusionPipeline":
-        kwargs["revision"] = "fp16"
+    kwargs["revision"] = "fp16"
 
     safechecker = DummySafetyChecker().safety_checker
     kwargs["safety_checker"] = safechecker
 
-    pipe = StableDiffusionPipeline.from_pretrained(model_path, **kwargs)
+    pipe = StableDiffusionT2IAdapterPipeline.from_pretrained(model_path, **kwargs)
     return pipe.to("cuda")
 
 
@@ -43,10 +40,8 @@ def generation(pipe, prompt, seed, features_adapter=None):
         "num_inference_steps": 50,
     }
     settings["prompt"] = prompt
-    g = torch.Generator(device="cuda")
-    settings["generator"] = g.manual_seed(seed)
     settings["features_adapter"] = features_adapter
-    settings["features_adapter_strength"] = 0.4
+    settings["features_adapter_strength"] = 0.5
     images = pipe(**settings).images
     return images
 
@@ -73,9 +68,7 @@ def main() -> int:
     features_adapter = model_ad(edge.to(device))
 
     pipe = loadmodel(args.pipeline, args.model_path, **kwargs)
-
-    if args.pipeline == "StableDiffusionPipeline":
-        pipe.scheduler = DPMSolverMultistepScheduler.from_config(pipe.scheduler.config)
+    pipe.scheduler = DPMSolverMultistepScheduler.from_config(pipe.scheduler.config)
 
     prompt = f"A car with flying wings"
     outputimg = generation(pipe, prompt, 52, features_adapter)
