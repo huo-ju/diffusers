@@ -492,6 +492,7 @@ class UNet2DConditionModel(ModelMixin, ConfigMixin, UNet2DConditionLoadersMixin)
         timestep_cond: Optional[torch.Tensor] = None,
         attention_mask: Optional[torch.Tensor] = None,
         cross_attention_kwargs: Optional[Dict[str, Any]] = None,
+        features_adapter: list = None,
         return_dict: bool = True,
     ) -> Union[UNet2DConditionOutput, Tuple]:
         r"""
@@ -574,20 +575,29 @@ class UNet2DConditionModel(ModelMixin, ConfigMixin, UNet2DConditionLoadersMixin)
         sample = self.conv_in(sample)
 
         # 3. down
+
         down_block_res_samples = (sample,)
+        feature_idx = 0
         for downsample_block in self.down_blocks:
             if hasattr(downsample_block, "has_cross_attention") and downsample_block.has_cross_attention:
+                fa = None
+                if features_adapter is not None:
+                    fa = features_adapter[feature_idx]
                 sample, res_samples = downsample_block(
                     hidden_states=sample,
                     temb=emb,
                     encoder_hidden_states=encoder_hidden_states,
                     attention_mask=attention_mask,
                     cross_attention_kwargs=cross_attention_kwargs,
+                    features_adapter=fa,
                 )
+                feature_idx = feature_idx + 1
             else:
                 sample, res_samples = downsample_block(hidden_states=sample, temb=emb)
-
             down_block_res_samples += res_samples
+
+        if features_adapter is not None:
+            sample = sample + features_adapter[feature_idx]
 
         # 4. mid
         if self.mid_block is not None:

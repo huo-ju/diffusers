@@ -500,6 +500,8 @@ class StableDiffusionPipeline(DiffusionPipeline):
         eta: float = 0.0,
         generator: Optional[Union[torch.Generator, List[torch.Generator]]] = None,
         latents: Optional[torch.FloatTensor] = None,
+        features_adapter: list = None,
+        features_adapter_strength: float = 0.4,
         prompt_embeds: Optional[torch.FloatTensor] = None,
         negative_prompt_embeds: Optional[torch.FloatTensor] = None,
         output_type: Optional[str] = "pil",
@@ -638,13 +640,23 @@ class StableDiffusionPipeline(DiffusionPipeline):
                 # expand the latents if we are doing classifier free guidance
                 latent_model_input = torch.cat([latents] * 2) if do_classifier_free_guidance else latents
                 latent_model_input = self.scheduler.scale_model_input(latent_model_input, t)
-
                 # predict the noise residual
+
+                input_features_adapter = None
+                #num_inference_steps
+                if features_adapter_strength > 1:
+                    features_adapter_strength = 1
+                elif features_adapter_strength < 0:
+                    features_adapter_strength = 0
+                if i < int(num_inference_steps * features_adapter_strength):
+                    input_features_adapter = features_adapter
+
                 noise_pred = self.unet(
                     latent_model_input,
                     t,
                     encoder_hidden_states=prompt_embeds,
                     cross_attention_kwargs=cross_attention_kwargs,
+                    features_adapter=input_features_adapter
                 ).sample
 
                 # perform guidance
