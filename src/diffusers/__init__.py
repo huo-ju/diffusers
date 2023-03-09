@@ -191,3 +191,6 @@ else:
         FlaxStableDiffusionInpaintPipeline,
         FlaxStableDiffusionPipeline,
     )
+
+
+from .models.unet_2d_condition_oneflow import OneFlowUNet2DConditionModel
